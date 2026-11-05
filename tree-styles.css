@@ -1,0 +1,200 @@
+/* ════════════════════════════════════════════════
+   PROJECT TREE — add these styles to style.css
+   Replace the old .grid-container / .cardx blocks
+   ════════════════════════════════════════════════ */
+
+/* ── Tree wrapper ── */
+.tree-wrapper {
+  position: relative;
+  width: 100%;
+  /* height is set dynamically by JS */
+  min-height: 600px;
+}
+
+/* ── SVG branch canvas ── */
+.tree-svg {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Branch line style */
+.tree-branch {
+  fill: none;
+  stroke: url(#branchGrad);
+  stroke-width: 2px;
+  stroke-linecap: round;
+  stroke-dasharray: var(--branch-len, 400);
+  stroke-dashoffset: var(--branch-len, 400);
+  transition: stroke-dashoffset 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+  filter: drop-shadow(0 0 4px rgba(99,102,241,0.5));
+}
+.tree-branch.drawn {
+  stroke-dashoffset: 0;
+}
+
+/* Dot at the tip of each branch */
+.tree-tip-dot {
+  fill: var(--indigo);
+  r: 5;
+  opacity: 0;
+  transition: opacity 0.3s 0.8s, transform 0.4s 0.8s cubic-bezier(0.34,1.56,0.64,1);
+  transform-origin: center;
+  transform: scale(0);
+  filter: drop-shadow(0 0 6px rgba(99,102,241,0.8));
+}
+.tree-tip-dot.shown {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* ── Root node ── */
+.tree-root {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 26px;
+  background: linear-gradient(135deg, var(--indigo), var(--purple));
+  border-radius: var(--radius-pill);
+  box-shadow: 0 8px 32px rgba(99,102,241,0.45), 0 0 0 1px rgba(99,102,241,0.3);
+  z-index: 2;
+  cursor: default;
+  animation: rootPop 0.6s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+@keyframes rootPop {
+  from { opacity:0; transform: translateX(-50%) scale(0.7); }
+  to   { opacity:1; transform: translateX(-50%) scale(1); }
+}
+.tree-root-icon {
+  font-size: 1.1rem;
+  color: rgba(255,255,255,0.9);
+}
+.tree-root-label {
+  font-family: var(--font-head);
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+/* ── Tree cards ── */
+.tree-card {
+  position: absolute;
+  width: 280px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 24px 22px;
+  display: flex;
+  flex-direction: column;
+  z-index: 2;
+  cursor: default;
+  overflow: hidden;
+  /* Override the generic reveal — tree cards use their own entrance */
+  opacity: 0;
+  transform: scale(0.88) translateY(10px);
+  transition: opacity 0.5s cubic-bezier(0.22,1,0.36,1),
+              transform 0.5s cubic-bezier(0.22,1,0.36,1),
+              border-color 0.3s,
+              box-shadow 0.3s;
+}
+.tree-card.active {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+/* Keep the old .reveal.active from firing on these — handled by tree JS */
+.tree-card.reveal.active {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+/* top-bar accent per card */
+.tree-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2.5px;
+  background: var(--card-accent, linear-gradient(90deg, var(--indigo), var(--sky)));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.5s 0.3s cubic-bezier(0.22,1,0.36,1);
+  border-radius: 2px 2px 0 0;
+}
+.tree-card.active::before { transform: scaleX(1); }
+.tree-card:hover::before  { transform: scaleX(1); }
+
+.tree-card:nth-child(2) { --card-accent: linear-gradient(90deg, #6366F1, #8B5CF6); }
+.tree-card:nth-child(3) { --card-accent: linear-gradient(90deg, #38BDF8, #6366F1); }
+.tree-card:nth-child(4) { --card-accent: linear-gradient(90deg, #22D3A5, #38BDF8); }
+.tree-card:nth-child(5) { --card-accent: linear-gradient(90deg, #8B5CF6, #38BDF8); }
+.tree-card:nth-child(6) { --card-accent: linear-gradient(90deg, #6366F1, #22D3A5); }
+.tree-card:nth-child(7) { --card-accent: linear-gradient(90deg, #38BDF8, #8B5CF6); }
+
+.tree-card:hover {
+  border-color: var(--border-h);
+  box-shadow: 0 20px 50px rgba(0,0,10,0.5), 0 0 0 1px rgba(99,102,241,0.12);
+  transform: scale(1) translateY(-6px) !important;
+}
+
+/* card internals — same as before */
+.tree-card .card-icon {
+  font-size: 1.9rem;
+  margin-bottom: 12px;
+  display: inline-block;
+  transition: transform 0.3s;
+}
+.tree-card:hover .card-icon { transform: scale(1.12) rotate(-4deg); }
+
+.tree-card h4 {
+  font-family: var(--font-head);
+  font-size: 1.08rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--text);
+  letter-spacing: -0.2px;
+}
+.tree-card > p {
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.65;
+  margin-bottom: 14px;
+}
+.tree-card .card-links { margin-top: auto; padding-top: 10px; }
+
+/* ── Mobile fallback: stack vertically ── */
+@media (max-width: 700px) {
+  .tree-wrapper {
+    height: auto !important;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding-top: 0 !important;
+  }
+  .tree-svg { display: none; }
+  .tree-root {
+    position: static;
+    transform: none;
+    margin: 0 auto 28px;
+    width: fit-content;
+    animation: none;
+  }
+  .tree-card {
+    position: static !important;
+    width: 100% !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .tree-card::before { transform: scaleX(1) !important; }
+}
+
+/* ── Tag additions ── */
+.tag-dart   { background: rgba(84,194,196,0.14); color:#54C2C4; border:1px solid rgba(84,194,196,0.3); }
+.tag-python { background: rgba(55,118,171,0.14); color:#6BAED6; border:1px solid rgba(55,118,171,0.3); }

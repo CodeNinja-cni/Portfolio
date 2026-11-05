@@ -1,0 +1,164 @@
+<!-- WORK — Tree Animation Section -->
+<!-- Replace the entire <section id="work"> block in your index.html with this -->
+
+<section id="work" class="section">
+  <div class="container">
+    <h2 class="section-title">Featured Work</h2>
+    <p class="section-sub">A few things I've built — and the reasons each one exists.</p>
+
+    <!-- TREE WRAPPER -->
+    <div class="tree-wrapper" id="project-tree" aria-label="Project tree">
+
+      <!-- SVG canvas for the animated branch lines -->
+      <svg class="tree-svg" id="tree-svg" aria-hidden="true"></svg>
+
+      <!-- ROOT NODE -->
+      <div class="tree-root" id="tree-root">
+        <span class="tree-root-icon">⟁</span>
+        <span class="tree-root-label">My Projects</span>
+      </div>
+
+      <!-- PROJECT CARDS — positioned via JS -->
+      <article class="tree-card reveal" data-index="0">
+        <div class="card-icon">🌐</div>
+        <h4>LinguaBridge</h4>
+        <p>A language translation app for seamless real-time translation.</p>
+        <div class="card-why">
+          <span class="why-label">Why I built this</span>
+          <p>Language shouldn't be a wall between people. I wanted to ship a tool that wraps a genuinely confusing problem — real-time translation — in an interface simple enough that anyone could use it without a manual.</p>
+        </div>
+        <div class="card-tags">
+          <span class="tag-html">HTML</span>
+          <span class="tag-css">CSS</span>
+          <span class="tag-js">JS</span>
+        </div>
+        <div class="card-links">
+          <a href="https://github.com/CodeNinja-cni/VoxaBridge.github.io.git" class="card-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+            GitHub
+          </a>
+          <a href="https://codeninja-cni.github.io/VoxaBridge.github.io/" class="card-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Live Demo
+          </a>
+        </div>
+      </article>
+
+      <article class="tree-card reveal" data-index="1">
+        <div class="card-icon">🧠</div>
+        <h4>Quiz App</h4>
+        <p>A quiz application with modern UI and varied question sets.</p>
+        <div class="card-why">
+          <span class="why-label">Why I built this</span>
+          <p>I wanted to nail state management — tracking score, progress, and question flow without a framework doing it for me. It's the project I point to when someone asks if I understand JavaScript fundamentals.</p>
+        </div>
+        <div class="card-tags">
+          <span class="tag-js">JavaScript</span>
+          <span class="tag-bootstrap">Bootstrap</span>
+        </div>
+        <div class="card-links">
+          <a href="https://github.com/CodeNinja-cni/QuizApp.github.io" class="card-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+            GitHub
+          </a>
+          <a href="https://codeninja-cni.github.io/QuizApp.github.io/" class="card-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Live Demo
+          </a>
+        </div>
+      </article>
+
+      <article class="tree-card reveal" data-index="2">
+        <div class="card-icon">📋</div>
+        <h4>ErrandUS</h4>
+        <p>A task management mobile app for handling daily errands (in progress).</p>
+        <div class="card-why">
+          <span class="why-label">Why I built this</span>
+          <p>Most to-do apps are built for office work, not the small, scattered errands that eat up a real day. ErrandUS respects how disorganized real errands actually are.</p>
+        </div>
+        <div class="card-tags">
+          <span class="tag-react">React</span>
+          <span class="tag-mobile">Mobile</span>
+          <span class="tag-dart">Dart</span>
+        </div>
+        <div class="card-links">
+          <span class="card-link card-link-disabled">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            In Progress
+          </span>
+        </div>
+      </article>
+
+      <article class="tree-card reveal" data-index="3"
+        <div class="card-icon">🧹</div>
+        <h4>Clean Naija</h4>
+        <p>A platform connecting users with local cleaning services.</p>
+        <div class="card-why">
+          <span class="why-label">Why I built this</span>
+          <p>Finding a reliable cleaning service in Nigeria usually means asking around. I wanted to build the booking layer that's missing — a simple, trustworthy way to connect users with vetted services nearby.</p>
+        </div>
+        <div class="card-tags">
+          <span class="tag-html">HTML</span>
+          <span class="tag-css">CSS</span>
+          <span class="tag-js">JS</span>
+        </div>
+        <div class="card-links">
+          <a href="https://github.com/CodeNinja-cni/CleanNaija.github.io" class="card-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+            GitHub
+          </a>
+          <a href="https://codeninja-cni.github.io/CleanNaija.github.io/" class="card-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Live Demo
+          </a>
+        </div>
+      </article>
+
+      <article class="tree-card reveal" data-index="4">
+        <div class="card-icon">🔗</div>
+        <h4>ShortN</h4>
+        <p>A URL shortening and QR code generation service.</p>
+        <div class="card-why">
+          <span class="why-label">Why I built this</span>
+          <p>I wanted a simple way to turn long, unwieldy URLs into short, clean links that are easier to share, remember, and use in everyday conversations, messages, and social posts.</p>
+        </div>
+        <div class="card-tags">
+          <span class="tag-html">HTML</span>
+          <span class="tag-css">CSS</span>
+          <span class="tag-js">JS</span>
+        </div>
+        <div class="card-links">
+          <a href="https://github.com/CodeNinja-cni/Shortn.github.io" class="card-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+            GitHub
+          </a>
+          <a href="https://codeninja-cni.github.io/Shortn.github.io/" class="card-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Live Demo
+          </a>
+        </div>
+      </article>
+
+      <article class="tree-card reveal" data-index="5">
+        <div class="card-icon">📍</div>
+        <h4>PhoneTrace</h4>
+        <p>A phone number location tracer built in Python.</p>
+        <div class="card-why">
+          <span class="why-label">Why I built this</span>
+          <p>I built this to help users quickly identify the origin behind a phone number, so they can verify unknown callers and feel more confident handling suspicious or unexpected calls.</p>
+        </div>
+        <div class="card-tags">
+          <span class="tag-python">Python</span>
+        </div>
+        <div class="card-links">
+          <a href="https://github.com/CodeNinja-cni/PhoneTrace.github.io" class="card-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+            GitHub
+          </a>
+          <span class="card-link card-link-disabled">Desktop App</span>
+        </div>
+      </article>
+
+    </div><!-- /tree-wrapper -->
+  </div>
+</section>
