@@ -22,7 +22,7 @@ Beyond web development, I am heavily focused on data science and machine learnin
 *   Expanding my freelance web development business to build tailored digital solutions for clients.
 
 ## 📫 Connect With Me
-*   **LinkedIn:** [Your LinkedIn Profile Link Here]
+*   **LinkedIn:** [https://www.linkedin.com/in/ibrahim-olawuyi-3aa2562a5/]
 *   **GitHub:** [@CodeNinja-cni](https://github.com/CodeNinja-cni)
 
 ---
