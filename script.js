@@ -4,7 +4,37 @@ document.documentElement.classList.add("js");
 
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)");
+const coarsePointer = window.matchMedia("(hover: none), (pointer: coarse)");
 const gsapReady = Boolean(window.gsap && window.ScrollTrigger);
+
+function prefersLiteVisuals() {
+  const memory = navigator.deviceMemory;
+  const cores = navigator.hardwareConcurrency;
+  return reducedMotion.matches
+    || navigator.connection?.saveData === true
+    || coarsePointer.matches
+    || window.innerWidth <= 850
+    || (Number.isFinite(memory) && memory <= 4)
+    || (Number.isFinite(cores) && cores <= 4);
+}
+
+function syncVisualMode() {
+  document.documentElement.classList.toggle("lite-visuals", prefersLiteVisuals());
+}
+
+function afterFirstPaint(callback) {
+  window.requestAnimationFrame(() => window.requestAnimationFrame(callback));
+}
+
+function whenIdle(callback, timeout = 2500) {
+  if ("requestIdleCallback" in window) {
+    window.requestIdleCallback(callback, { timeout });
+  } else {
+    window.setTimeout(callback, 250);
+  }
+}
+
+syncVisualMode();
 
 if (gsapReady) {
   window.gsap.registerPlugin(window.ScrollTrigger);
@@ -22,6 +52,19 @@ const signalSpineNodes = [...document.querySelectorAll(".signal-spine-node")];
 const signalSpineSections = ["work", "lab", "journey", "evidence", "about", "contact"];
 let pageChromeFrame = 0;
 let activeDesktopLink = null;
+let activeChromeSection = "";
+let pageScrollable = 0;
+let sectionMetrics = [];
+const navMetrics = new Map();
+
+function measurePageChrome() {
+  pageScrollable = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+  sectionMetrics = sections.map((section) => ({ id: section.id, top: section.offsetTop }));
+  navMetrics.clear();
+  desktopLinks.forEach((link) => {
+    navMetrics.set(link, { x: link.offsetLeft - 4, width: link.offsetWidth });
+  });
+}
 
 function moveNavIndicator(link, immediate = false) {
   if (!navIndicator || !desktopNav) return;
@@ -34,9 +77,9 @@ function moveNavIndicator(link, immediate = false) {
     return;
   }
 
+  const metrics = navMetrics.get(link) || { x: link.offsetLeft - 4, width: link.offsetWidth };
   const state = {
-    x: link.offsetLeft - 4,
-    width: link.offsetWidth,
+    ...metrics,
     opacity: 1,
   };
 
@@ -56,36 +99,38 @@ function moveNavIndicator(link, immediate = false) {
 
 function updatePageChrome() {
   const scrollTop = window.scrollY;
-  const scrollable = document.documentElement.scrollHeight - window.innerHeight;
 
   header?.classList.toggle("scrolled", scrollTop > 24);
   if (progressBar) {
-    const progress = scrollable > 0 ? Math.min(1, Math.max(0, scrollTop / scrollable)) : 0;
+    const progress = pageScrollable > 0 ? Math.min(1, Math.max(0, scrollTop / pageScrollable)) : 0;
     progressBar.style.transform = `scaleX(${progress})`;
   }
 
   let current = "home";
-  for (const section of sections) {
-    if (scrollTop >= section.offsetTop - window.innerHeight * 0.34) current = section.id;
+  for (const section of sectionMetrics) {
+    if (scrollTop >= section.top - window.innerHeight * 0.34) current = section.id;
   }
 
-  const navCurrent = current === "evidence" ? "journey" : current;
-  desktopLinks.forEach((link) => {
-    const isActive = link.hash === `#${navCurrent}`;
-    link.classList.toggle("active", isActive);
-    if (isActive) {
-      link.setAttribute("aria-current", "page");
-      activeDesktopLink = link;
-    } else {
-      link.removeAttribute("aria-current");
-    }
-  });
-  const spineIndex = signalSpineSections.indexOf(current);
-  signalSpineNodes.forEach((node, index) => {
-    node.classList.toggle("is-active", spineIndex < 0 ? index === 0 : index === spineIndex);
-  });
-  if (!desktopLinks.some((link) => link.classList.contains("active"))) activeDesktopLink = null;
-  moveNavIndicator(activeDesktopLink);
+  if (current !== activeChromeSection) {
+    const navCurrent = current === "evidence" ? "journey" : current;
+    activeDesktopLink = null;
+    desktopLinks.forEach((link) => {
+      const isActive = link.hash === `#${navCurrent}`;
+      link.classList.toggle("active", isActive);
+      if (isActive) {
+        link.setAttribute("aria-current", "page");
+        activeDesktopLink = link;
+      } else {
+        link.removeAttribute("aria-current");
+      }
+    });
+    const spineIndex = signalSpineSections.indexOf(current);
+    signalSpineNodes.forEach((node, index) => {
+      node.classList.toggle("is-active", spineIndex < 0 ? index === 0 : index === spineIndex);
+    });
+    activeChromeSection = current;
+    moveNavIndicator(activeDesktopLink);
+  }
 }
 
 function requestPageChromeUpdate() {
@@ -97,10 +142,26 @@ function requestPageChromeUpdate() {
 }
 
 window.addEventListener("scroll", requestPageChromeUpdate, { passive: true });
-window.addEventListener("resize", requestPageChromeUpdate, { passive: true });
+window.addEventListener("resize", () => {
+  syncVisualMode();
+  if (!prefersLiteVisuals()) {
+    initMotionSystem();
+    armLivingSystem();
+  }
+  measurePageChrome();
+  activeChromeSection = "";
+  requestPageChromeUpdate();
+}, { passive: true });
 desktopLinks.forEach((link) => link.addEventListener("pointerenter", () => moveNavIndicator(link)));
 desktopNav?.addEventListener("pointerleave", () => moveNavIndicator(activeDesktopLink));
+measurePageChrome();
 updatePageChrome();
+
+document.fonts?.ready.then(() => {
+  measurePageChrome();
+  activeChromeSection = "";
+  updatePageChrome();
+});
 
 /* Mobile navigation ------------------------------------------------------- */
 const menuButton = document.getElementById("menu-button");
@@ -163,7 +224,7 @@ reveals.forEach((element) => element.classList.add("is-visible"));
 let motionInitialized = false;
 
 function initMotionSystem() {
-  if (motionInitialized || !gsapReady || reducedMotion.matches) return;
+  if (motionInitialized || !gsapReady || prefersLiteVisuals()) return;
   motionInitialized = true;
 
   const gsap = window.gsap;
@@ -517,8 +578,12 @@ labTabs.forEach((tab, index) => {
 /* Subtle project-cover depth, only for precise pointers. */
 if (finePointer.matches && !reducedMotion.matches) {
   document.querySelectorAll(".project-visual").forEach((cover) => {
+    let bounds = null;
+    cover.addEventListener("pointerenter", () => {
+      bounds = cover.getBoundingClientRect();
+    });
     cover.addEventListener("pointermove", (event) => {
-      const bounds = cover.getBoundingClientRect();
+      if (!bounds) return;
       const x = (event.clientX - bounds.left) / bounds.width;
       const y = (event.clientY - bounds.top) / bounds.height;
       cover.style.setProperty("--spot-x", `${x * 100}%`);
@@ -527,6 +592,7 @@ if (finePointer.matches && !reducedMotion.matches) {
       cover.style.setProperty("--shift-y", `${(y - 0.5) * -6}px`);
     });
     cover.addEventListener("pointerleave", () => {
+      bounds = null;
       cover.style.removeProperty("--spot-x");
       cover.style.removeProperty("--spot-y");
       cover.style.removeProperty("--shift-x");
@@ -552,7 +618,7 @@ const caseStudies = {
     imageWidth: 1265,
     imageHeight: 820,
     code: "VB · 001",
-    overview: "VoxaBridge turns translation into a clear, low-friction flow: choose a source language, enter text, swap direction when needed, and get a useful result. Built with HTML, CSS, and JavaScript, it prioritizes readable controls and a focused workspace over interface noise.",
+    overview: "VoxaBridge keeps language selection, text input, direction changes, and translated output inside one readable workspace.",
     system: ["Language selection", "Swap interaction", "Text input", "Result flow"],
     challenge: "Make a potentially complex translation task understandable without instructions.",
     approach: "Organize the experience around one primary task, clear controls, and a focused workspace.",
@@ -575,7 +641,7 @@ const caseStudies = {
     imageWidth: 1265,
     imageHeight: 712,
     code: "CN · 002",
-    overview: "CleanNaija is a civic waste-reporting product for logging disposal sites across Nigeria, finding nearby reports, and following cleanup status. The interface brings reporting, search, filters, and visible community progress into one focused dashboard.",
+    overview: "CleanNaija helps communities report waste sites, find nearby issues, and follow cleanup status from one dashboard.",
     system: ["Structured report form", "Location search", "Status filters", "Cleanup counters"],
     challenge: "Make environmental reports easy to submit, find, and follow.",
     approach: "Combine reporting, discovery, and cleanup status in one legible product flow.",
@@ -598,7 +664,7 @@ const caseStudies = {
     imageWidth: 1280,
     imageHeight: 720,
     code: "QA · 003",
-    overview: "Quiz App runs a complete ten-question experience with player setup, progress, scoring, immediate feedback, and a leaderboard. It demonstrates state and interaction fundamentals in a compact, framework-free build.",
+    overview: "A framework-free, ten-question experience with setup, progress, scoring, immediate feedback, and a leaderboard.",
     system: ["Randomized questions", "Progress state", "Scoring and feedback", "Leaderboard"],
     challenge: "Manage question state, scoring, progress, and feedback without a frontend framework.",
     approach: "Structure the experience into clear start, question, result, and leaderboard states.",
@@ -621,7 +687,7 @@ const caseStudies = {
     imageWidth: 1280,
     imageHeight: 720,
     code: "SN · 004",
-    overview: "ShortN turns long URLs into shorter links and a scannable QR code within one quick flow. A ticket-inspired visual system gives the single-purpose utility a memorable identity without making the task harder.",
+    overview: "ShortN creates a shortened link and scannable QR code in one ticket-inspired flow.",
     system: ["URL input", "Shortened output", "QR rendering", "Process explanation"],
     challenge: "Make a technical utility approachable, memorable, and quick.",
     approach: "Combine shortening, QR sharing, and a simple explanation in one ticket-inspired flow.",
@@ -853,8 +919,7 @@ function createLivingSystem() {
   const canvas = document.getElementById("system-canvas");
   const stage = document.querySelector(".system-stage");
   const hero = document.querySelector(".hero");
-  const saveData = navigator.connection?.saveData === true;
-  if (!canvas || !stage || typeof window.THREE === "undefined" || reducedMotion.matches || saveData || livingSystemStarted) return;
+  if (!canvas || !stage || typeof window.THREE === "undefined" || prefersLiteVisuals() || livingSystemStarted) return;
   livingSystemStarted = true;
 
   const THREE = window.THREE;
@@ -864,8 +929,8 @@ function createLivingSystem() {
     renderer = new THREE.WebGLRenderer({
       canvas,
       alpha: true,
-      antialias: true,
-      powerPreference: window.innerWidth > 850 ? "high-performance" : "default",
+      antialias: window.devicePixelRatio <= 1.5,
+      powerPreference: "low-power",
     });
   } catch (error) {
     console.warn("WebGL is unavailable; using the CSS system fallback.", error);
@@ -925,7 +990,7 @@ function createLivingSystem() {
   const shellGeometry = new THREE.IcosahedronGeometry(1.62, 2);
   const shell = new THREE.Mesh(
     shellGeometry,
-    new THREE.MeshPhysicalMaterial({
+    new THREE.MeshStandardMaterial({
       color: 0x2346b8,
       emissive: 0x0b1c58,
       emissiveIntensity: 0.65,
@@ -967,7 +1032,7 @@ function createLivingSystem() {
   const shardGroup = new THREE.Group();
   const shardGeometry = new THREE.TetrahedronGeometry(0.42, 0);
   const shardEdgesGeometry = new THREE.EdgesGeometry(shardGeometry);
-  const shardMaterial = new THREE.MeshPhysicalMaterial({
+  const shardMaterial = new THREE.MeshStandardMaterial({
     color: 0x210813,
     emissive: 0x861b3d,
     emissiveIntensity: 0.72,
@@ -1200,41 +1265,77 @@ function createLivingSystem() {
   let lastResolveCss = -1;
   let isVisible = true;
   let frameId = 0;
+  let resolveScrollFrame = 0;
+  let heroMetrics = null;
+  let lastFrameTime = 0;
+  const frameInterval = 1000 / 30;
   const clock = new THREE.Clock();
   let elapsed = 0;
+
+  function updateResolveTarget() {
+    if (!heroMetrics) return;
+    const progress = Math.min(1, Math.max(0,
+      (window.scrollY - heroMetrics.top) / heroMetrics.resolveTravel,
+    ));
+    resolveTarget = 0.14 + progress * 0.86;
+  }
+
+  function measureHero() {
+    if (!hero) return;
+    const bounds = hero.getBoundingClientRect();
+    heroMetrics = {
+      left: bounds.left + window.scrollX,
+      top: bounds.top + window.scrollY,
+      width: Math.max(bounds.width, 1),
+      height: Math.max(bounds.height, 1),
+      resolveTravel: Math.max(bounds.height - window.innerHeight, window.innerHeight * 0.42),
+    };
+    updateResolveTarget();
+  }
+
+  function requestResolveUpdate() {
+    if (resolveScrollFrame) return;
+    resolveScrollFrame = window.requestAnimationFrame(() => {
+      resolveScrollFrame = 0;
+      updateResolveTarget();
+    });
+  }
 
   function resize() {
     const width = Math.max(stage.clientWidth, 1);
     const height = Math.max(stage.clientHeight, 1);
-    const pixelRatioLimit = window.innerWidth < 700 ? 1 : 1.45;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, pixelRatioLimit));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
+    measureHero();
+    if (prefersLiteVisuals()) {
+      stopAnimation();
+      return;
+    }
     renderFrame();
+    if (document.documentElement.classList.contains("webgl-ready")) startAnimation();
   }
 
   function renderFrame() {
     renderer.render(scene, camera);
   }
 
-  function animate() {
-    if (!isVisible || document.hidden || reducedMotion.matches) {
+  function animate(timestamp) {
+    if (!isVisible || document.hidden || prefersLiteVisuals()) {
       frameId = 0;
       return;
     }
+
+    frameId = window.requestAnimationFrame(animate);
+    if (timestamp - lastFrameTime < frameInterval) return;
+    lastFrameTime = timestamp - ((timestamp - lastFrameTime) % frameInterval);
 
     elapsed += Math.min(clock.getDelta(), 0.05);
     pointerX += (targetPointerX - pointerX) * 0.035;
     pointerY += (targetPointerY - pointerY) * 0.035;
     pointerEnergy *= 0.94;
 
-    if (hero) {
-      const heroBounds = hero.getBoundingClientRect();
-      const resolveTravel = Math.max(hero.offsetHeight - window.innerHeight, window.innerHeight * 0.42);
-      const scrollResolution = Math.min(1, Math.max(0, -heroBounds.top / resolveTravel));
-      resolveTarget = 0.14 + scrollResolution * 0.86;
-    }
     resolveValue += (resolveTarget - resolveValue) * 0.045;
     const resolvedEase = resolveValue * resolveValue * (3 - 2 * resolveValue);
 
@@ -1279,12 +1380,12 @@ function createLivingSystem() {
     camera.lookAt(0, 0, 0);
 
     renderFrame();
-    frameId = window.requestAnimationFrame(animate);
   }
 
   function startAnimation() {
-    if (frameId || reducedMotion.matches || !isVisible || document.hidden) return;
+    if (frameId || prefersLiteVisuals() || !isVisible || document.hidden) return;
     clock.getDelta();
+    lastFrameTime = 0;
     frameId = window.requestAnimationFrame(animate);
   }
 
@@ -1294,9 +1395,9 @@ function createLivingSystem() {
   }
 
   hero?.addEventListener("pointermove", (event) => {
-    const bounds = hero.getBoundingClientRect();
-    const nextX = ((event.clientX - bounds.left) / bounds.width - 0.5) * 2;
-    const nextY = ((event.clientY - bounds.top) / bounds.height - 0.5) * 2;
+    if (!heroMetrics) return;
+    const nextX = ((event.clientX + window.scrollX - heroMetrics.left) / heroMetrics.width - 0.5) * 2;
+    const nextY = ((event.clientY + window.scrollY - heroMetrics.top) / heroMetrics.height - 0.5) * 2;
     pointerEnergy = Math.min(1, pointerEnergy + Math.hypot(
       nextX - previousPointerX,
       nextY - previousPointerY,
@@ -1306,6 +1407,8 @@ function createLivingSystem() {
     targetPointerX = nextX;
     targetPointerY = nextY;
   }, { passive: true });
+
+  window.addEventListener("scroll", requestResolveUpdate, { passive: true });
 
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) stopAnimation();
@@ -1355,6 +1458,8 @@ function createLivingSystem() {
 
   window.addEventListener("pagehide", () => {
     stopAnimation();
+    window.removeEventListener("scroll", requestResolveUpdate);
+    if (resolveScrollFrame) window.cancelAnimationFrame(resolveScrollFrame);
     resizeObserver?.disconnect();
     if (!resizeObserver) window.removeEventListener("resize", resize);
     scene.traverse((object) => {
@@ -1369,7 +1474,7 @@ function createLivingSystem() {
 let threeLoadPromise = null;
 
 function loadLivingSystem() {
-  if (livingSystemStarted || reducedMotion.matches || navigator.connection?.saveData === true) return;
+  if (livingSystemStarted || prefersLiteVisuals()) return;
   if (window.THREE) {
     createLivingSystem();
     return;
@@ -1389,9 +1494,52 @@ function loadLivingSystem() {
   });
 }
 
-loadLivingSystem();
+let livingSystemArmed = false;
+
+function armLivingSystem() {
+  if (livingSystemStarted || livingSystemArmed || prefersLiteVisuals()) return;
+  const stage = document.querySelector(".system-stage");
+  if (!stage) return;
+  livingSystemArmed = true;
+
+  const queueLoad = () => {
+    window.setTimeout(() => {
+      whenIdle(() => {
+        livingSystemArmed = false;
+        loadLivingSystem();
+      }, 3000);
+    }, 1800);
+  };
+
+  if (!("IntersectionObserver" in window)) {
+    queueLoad();
+    return;
+  }
+
+  const observer = new IntersectionObserver(([entry]) => {
+    if (!entry.isIntersecting) return;
+    observer.disconnect();
+    queueLoad();
+  }, { rootMargin: "150px" });
+  observer.observe(stage);
+}
+
+function scheduleLivingSystem() {
+  afterFirstPaint(armLivingSystem);
+}
+
+if (document.readyState === "complete") {
+  scheduleLivingSystem();
+} else {
+  window.addEventListener("load", scheduleLivingSystem, { once: true });
+}
+
 reducedMotion.addEventListener?.("change", () => {
-  if (!reducedMotion.matches) loadLivingSystem();
+  syncVisualMode();
+  if (!prefersLiteVisuals()) {
+    initMotionSystem();
+    armLivingSystem();
+  }
 });
 
 /* Contact ----------------------------------------------------------------- */
