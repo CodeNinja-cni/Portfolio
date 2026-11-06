@@ -64,6 +64,7 @@
       <a href="#work">Work</a>
       <a href="#lab">Lab</a>
       <a href="#journey">Journey</a>
+      <a href="#evidence">Evidence</a>
       <a href="#about">About</a>
       <a href="#contact">Contact</a>
     </nav>
@@ -78,13 +79,13 @@
     </button>
 
     <nav class="mobile-menu" id="mobile-menu" aria-label="Mobile navigation" aria-hidden="true">
-      <a href="#home"><small aria-hidden="true">01</small>Home</a>
-      <a href="#work"><small aria-hidden="true">02</small>Work</a>
-      <a href="#lab"><small aria-hidden="true">03</small>Lab</a>
-      <a href="#journey"><small aria-hidden="true">04</small>IOAI journey</a>
-      <a href="#evidence"><small aria-hidden="true">05</small>Evidence</a>
-      <a href="#about"><small aria-hidden="true">06</small>About</a>
-      <a href="#contact"><small aria-hidden="true">07</small>Open channel</a>
+      <a href="#home"><small aria-hidden="true">00</small>Home</a>
+      <a href="#work"><small aria-hidden="true">01</small>Work</a>
+      <a href="#lab"><small aria-hidden="true">02</small>Lab</a>
+      <a href="#journey"><small aria-hidden="true">03</small>IOAI journey</a>
+      <a href="#evidence"><small aria-hidden="true">04</small>Evidence</a>
+      <a href="#about"><small aria-hidden="true">05</small>About</a>
+      <a href="#contact"><small aria-hidden="true">06</small>Open channel</a>
     </nav>
   </header>
 
@@ -105,7 +106,7 @@
         <div class="system-fallback">
           <span></span><span></span><span></span>
         </div>
-        <div class="system-label label-one"><i></i><b>RAW SIGNAL</b><small>CAPTURED</small></div>
+        <div class="system-label label-one is-active"><i></i><b>RAW SIGNAL</b><small>CAPTURED</small></div>
         <div class="system-label label-two"><i></i><b>PRODUCT LOGIC</b><small>FORMING</small></div>
         <div class="system-label label-three"><i></i><b>USEFUL OUTPUT</b><small>RESOLVED</small></div>
         <div class="system-index"><span>SIGNAL FOUNDRY</span><b>IO / 001</b></div>
@@ -179,6 +180,7 @@
         <article class="case-study reveal" data-project="linguabridge">
           <button class="project-visual project-visual-dark" type="button" data-case-study="linguabridge" aria-haspopup="dialog" aria-controls="case-study-dialog" aria-label="Open the VoxaBridge case study">
             <img src="src/project-linguabridge-art.webp" alt="Abstract intertwined conversation forms representing VoxaBridge" width="1439" height="810" loading="lazy" decoding="async">
+            <span class="project-resolver" aria-hidden="true"></span>
             <span class="project-identity">
               <span class="project-mark">VB</span>
               <span class="project-identity-copy"><small>PROJECT / 01</small><strong>VOXA<br>BRIDGE</strong></span>
@@ -210,6 +212,7 @@
         <article class="case-study reveal" data-project="cleannaija">
           <button class="project-visual project-visual-green" type="button" data-case-study="cleannaija" aria-haspopup="dialog" aria-controls="case-study-dialog" aria-label="Open the CleanNaija case study">
             <img src="src/project-cleannaija-art.webp" alt="Abstract connected green city representing CleanNaija" width="1439" height="810" loading="lazy" decoding="async">
+            <span class="project-resolver" aria-hidden="true"></span>
             <span class="project-identity">
               <span class="project-mark">CN</span>
               <span class="project-identity-copy"><small>PROJECT / 02</small><strong>CLEAN<br>NAIJA</strong></span>
@@ -241,6 +244,7 @@
         <article class="case-study reveal" data-project="quiz">
           <button class="project-visual project-visual-violet" type="button" data-case-study="quiz" aria-haspopup="dialog" aria-controls="case-study-dialog" aria-label="Open the Quiz App case study">
             <img src="src/project-quiz-art.webp" alt="Abstract decision tiles and progress system representing Quiz App" width="1439" height="810" loading="lazy" decoding="async">
+            <span class="project-resolver" aria-hidden="true"></span>
             <span class="project-identity">
               <span class="project-mark">QA</span>
               <span class="project-identity-copy"><small>PROJECT / 03</small><strong>QUIZ<br>APP</strong></span>
@@ -272,6 +276,7 @@
         <article class="case-study reveal" data-project="shortn">
           <button class="project-visual project-visual-paper" type="button" data-case-study="shortn" aria-haspopup="dialog" aria-controls="case-study-dialog" aria-label="Open the ShortN case study">
             <img src="src/project-shortn-art.webp" alt="Abstract linked ribbon and QR matrix representing ShortN" width="1440" height="737" loading="lazy" decoding="async">
+            <span class="project-resolver" aria-hidden="true"></span>
             <span class="project-identity">
               <span class="project-mark">SN</span>
               <span class="project-identity-copy"><small>PROJECT / 04</small><strong>SHORT<br>N</strong></span>
@@ -313,7 +318,7 @@
       </div>
 
       <div class="lab-grid reveal">
-        <div class="lab-console" aria-hidden="true">
+        <div class="lab-console" data-lab-signal="ai" aria-hidden="true">
           <div class="lab-console-head"><span>FOUNDRY / LAB</span><b>03 SIGNALS</b></div>
           <div class="lab-field">
             <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
@@ -376,7 +381,7 @@
         <article class="journey-step reveal" data-signal-stage="expansion">
           <span>02 / EXPANSION</span><h3>Move from interfaces into intelligence.</h3><p>Data, machine-learning foundations, neural networks, and evaluation.</p>
         </article>
-        <article class="journey-step reveal" data-signal-stage="team-nigeria">
+        <article class="journey-step reveal is-current" data-signal-stage="team-nigeria" aria-current="step">
           <span>03 / TEAM NIGERIA</span><h3>Represent, collaborate, improve.</h3><p>Preparing through shared practice, technical challenge, and national responsibility.</p>
         </article>
         <article class="journey-step reveal" data-signal-stage="forward">
@@ -396,10 +401,10 @@
 
       <div class="evidence-ledger reveal">
         <article class="evidence-row">
-          <span>01</span><h3>Full-stack product thinking</h3><p>Responsive structure, interface logic, and delivery from requirement to release.</p><a href="#work">Four case studies ↘</a>
+          <span>01</span><h3>End-to-end product delivery</h3><p>Responsive structure, interface logic, and delivery from requirement to release.</p><a href="#work">Four case studies ↘</a>
         </article>
         <article class="evidence-row">
-          <span>02</span><h3>JavaScript &amp; interaction</h3><p>State, forms, feedback, filtering, and game flow in shipped interfaces.</p><a href="#case-quiz">Quiz App case ↘</a>
+          <span>02</span><h3>JavaScript &amp; interaction</h3><p>State, forms, feedback, filtering, and game flow in shipped interfaces.</p><a href="#case-quiz" data-case-study="quiz" aria-haspopup="dialog" aria-controls="case-study-dialog">Quiz App case ↘</a>
         </article>
         <article class="evidence-row">
           <span>03</span><h3>Mobile &amp; responsive systems</h3><p>Clear layouts and task flows across touch, small screens, and changing viewports.</p><a href="#lab">ErrandUS signal ↘</a>
@@ -420,8 +425,8 @@
         <figure class="profile-card reveal">
           <div class="profile-frame">
             <picture>
-              <source type="image/webp" srcset="src/profile-480.webp 480w, src/profile-768.webp 768w, src/profile-1024.webp 1024w" sizes="(max-width: 850px) 70vw, 29vw">
-              <img src="src/profile-1024.jpg" alt="Portrait of Ibrahim Olawuyi" width="1024" height="1024" loading="lazy" decoding="async">
+              <source type="image/webp" srcset="src/ibrahim-portrait-480.webp 480w, src/ibrahim-portrait-768.webp 768w, src/ibrahim-portrait-896.webp 896w" sizes="(max-width: 850px) 70vw, 29vw">
+              <img src="src/ibrahim-portrait-896.jpg" alt="Portrait of Ibrahim Olawuyi wearing a charcoal hoodie against a brick wall" width="896" height="1195" loading="lazy" decoding="async">
             </picture>
             <span class="profile-corner corner-one"></span>
             <span class="profile-corner corner-two"></span>
@@ -560,8 +565,6 @@
     <p>Lagos / Kwara · Nigeria</p>
   </footer>
 
-  <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/ScrollTrigger.min.js" defer></script>
   <script src="script.js" defer></script>
 </body>
 </html>

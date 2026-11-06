@@ -5,13 +5,19 @@ document.documentElement.classList.add("js");
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)");
 const coarsePointer = window.matchMedia("(hover: none), (pointer: coarse)");
-const gsapReady = Boolean(window.gsap && window.ScrollTrigger);
+let gsapReady = false;
+let motionLibraryPromise = null;
+let motionLibrariesScheduled = false;
+const heroEntranceAnimations = new Set();
 
 function prefersLiteVisuals() {
+  return reducedMotion.matches || navigator.connection?.saveData === true;
+}
+
+function prefersLiteMotion() {
   const memory = navigator.deviceMemory;
   const cores = navigator.hardwareConcurrency;
-  return reducedMotion.matches
-    || navigator.connection?.saveData === true
+  return prefersLiteVisuals()
     || coarsePointer.matches
     || window.innerWidth <= 850
     || (Number.isFinite(memory) && memory <= 4)
@@ -20,6 +26,7 @@ function prefersLiteVisuals() {
 
 function syncVisualMode() {
   document.documentElement.classList.toggle("lite-visuals", prefersLiteVisuals());
+  document.documentElement.classList.toggle("lite-motion", prefersLiteMotion());
 }
 
 function afterFirstPaint(callback) {
@@ -36,9 +43,127 @@ function whenIdle(callback, timeout = 2500) {
 
 syncVisualMode();
 
-if (gsapReady) {
+function playInitialHeroEntrance() {
+  if (reducedMotion.matches || typeof Element.prototype.animate !== "function") return;
+  const compact = window.innerWidth <= 850;
+  const sequences = compact
+    ? [
+      [".hero-kicker", 0, 12],
+      [".hero-title", 55, 20],
+      [".hero-intro", 120, 16],
+      [".hero-actions", 175, 14],
+      [".hero-proof", 230, 12],
+      [".scroll-cue", 285, 10],
+    ]
+    : [
+      [".hero-display-title span", 0, null],
+      [".hero-meta > span", 70, 12],
+      [".hero-kicker", 150, 14],
+      [".hero-title", 210, 22],
+      [".hero-intro", 300, 18],
+      [".hero-actions", 365, 15],
+      [".system-label, .system-index", 400, null],
+      [".hero-proof", 455, 14],
+      [".scroll-cue", 510, 10],
+    ];
+
+  sequences.forEach(([selector, delay, distance]) => {
+    document.querySelectorAll(selector).forEach((element, index) => {
+      const keyframes = distance === null
+        ? [{ opacity: 0 }, { opacity: 1 }]
+        : [
+          { opacity: 0, transform: `translate3d(0, ${distance}px, 0)` },
+          { opacity: 1, transform: "translate3d(0, 0, 0)" },
+        ];
+      const animation = element.animate(keyframes, {
+        duration: compact ? 520 : 680,
+        delay: delay + index * 45,
+        easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+        fill: "backwards",
+      });
+      heroEntranceAnimations.add(animation);
+      const release = () => heroEntranceAnimations.delete(animation);
+      animation.finished.then(release, release);
+    });
+  });
+}
+
+playInitialHeroEntrance();
+
+function activateMotionLibraries() {
+  if (gsapReady || !window.gsap || !window.ScrollTrigger) return;
+  gsapReady = true;
   window.gsap.registerPlugin(window.ScrollTrigger);
   document.documentElement.classList.add("motion-ready");
+  initMotionSystem();
+}
+
+function loadExternalScript(source) {
+  return new Promise((resolve, reject) => {
+    const loader = document.createElement("script");
+    loader.src = source;
+    loader.crossOrigin = "anonymous";
+    loader.onload = resolve;
+    loader.onerror = reject;
+    document.head.append(loader);
+  });
+}
+
+function loadMotionLibraries() {
+  if (prefersLiteMotion()) return Promise.resolve(false);
+  if (gsapReady) {
+    initMotionSystem();
+    return Promise.resolve(true);
+  }
+  if (!motionLibraryPromise) {
+    const gsapLoader = window.gsap
+      ? Promise.resolve()
+      : loadExternalScript("https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js");
+    motionLibraryPromise = gsapLoader
+      .then(() => {
+        if (prefersLiteMotion()) return false;
+        const scrollTriggerLoader = window.ScrollTrigger
+          ? Promise.resolve()
+          : loadExternalScript("https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/ScrollTrigger.min.js");
+        return scrollTriggerLoader.then(() => true);
+      })
+      .then((shouldActivate) => {
+        if (!shouldActivate || prefersLiteMotion()) return false;
+        activateMotionLibraries();
+        return true;
+      })
+      .catch((error) => {
+        console.warn("Enhanced motion could not load; keeping the lightweight experience.", error);
+        return false;
+      })
+      .finally(() => {
+        if (!gsapReady) motionLibraryPromise = null;
+      });
+  }
+  return motionLibraryPromise;
+}
+
+function scheduleMotionLibraries() {
+  if (prefersLiteMotion()) return;
+  if (gsapReady) {
+    initMotionSystem();
+    return;
+  }
+  if (motionLibraryPromise || motionLibrariesScheduled) return;
+  motionLibrariesScheduled = true;
+
+  const queueLoad = () => {
+    const heroTimeRemaining = Math.max(0, 1300 - performance.now());
+    window.setTimeout(() => {
+      whenIdle(() => {
+        motionLibrariesScheduled = false;
+        loadMotionLibraries();
+      }, 1800);
+    }, heroTimeRemaining);
+  };
+
+  if (document.readyState === "complete") queueLoad();
+  else window.addEventListener("load", queueLoad, { once: true });
 }
 
 /* Page chrome ------------------------------------------------------------- */
@@ -46,8 +171,12 @@ const header = document.getElementById("site-header");
 const progressBar = document.getElementById("page-progress-bar");
 const desktopNav = document.querySelector(".desktop-nav");
 const desktopLinks = [...document.querySelectorAll(".desktop-nav a")];
+const mobileNavLinks = [...document.querySelectorAll(".mobile-menu a")];
 const navIndicator = document.querySelector(".nav-indicator");
 const sections = [...document.querySelectorAll("main section[id]")];
+const heroSection = document.getElementById("home");
+const systemResolutionLabels = [...document.querySelectorAll(".system-label")];
+const signalSpine = document.querySelector(".signal-spine");
 const signalSpineNodes = [...document.querySelectorAll(".signal-spine-node")];
 const signalSpineSections = ["work", "lab", "journey", "evidence", "about", "contact"];
 let pageChromeFrame = 0;
@@ -55,11 +184,19 @@ let activeDesktopLink = null;
 let activeChromeSection = "";
 let pageScrollable = 0;
 let sectionMetrics = [];
+let heroResolutionMetric = { top: 0, travel: 1 };
+let liteResolutionStage = -1;
 const navMetrics = new Map();
 
 function measurePageChrome() {
   pageScrollable = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
   sectionMetrics = sections.map((section) => ({ id: section.id, top: section.offsetTop }));
+  if (heroSection) {
+    heroResolutionMetric = {
+      top: heroSection.offsetTop,
+      travel: Math.max(heroSection.offsetHeight - window.innerHeight, window.innerHeight * 0.42),
+    };
+  }
   navMetrics.clear();
   desktopLinks.forEach((link) => {
     navMetrics.set(link, { x: link.offsetLeft - 4, width: link.offsetWidth });
@@ -99,11 +236,27 @@ function moveNavIndicator(link, immediate = false) {
 
 function updatePageChrome() {
   const scrollTop = window.scrollY;
+  const pageProgress = pageScrollable > 0 ? Math.min(1, Math.max(0, scrollTop / pageScrollable)) : 0;
 
   header?.classList.toggle("scrolled", scrollTop > 24);
   if (progressBar) {
-    const progress = pageScrollable > 0 ? Math.min(1, Math.max(0, scrollTop / pageScrollable)) : 0;
-    progressBar.style.transform = `scaleX(${progress})`;
+    progressBar.style.transform = `scaleX(${pageProgress})`;
+  }
+  signalSpine?.style.setProperty("--spine-progress", pageProgress.toFixed(3));
+
+  if ((prefersLiteVisuals() || !document.documentElement.classList.contains("webgl-ready"))
+    && systemResolutionLabels.length) {
+    const heroProgress = Math.min(1, Math.max(0,
+      (scrollTop - heroResolutionMetric.top) / heroResolutionMetric.travel,
+    ));
+    const stageIndex = heroProgress < 0.32 ? 0 : heroProgress < 0.68 ? 1 : 2;
+    if (stageIndex !== liteResolutionStage) {
+      liteResolutionStage = stageIndex;
+      systemResolutionLabels.forEach((label, index) => {
+        label.classList.toggle("is-active", index === stageIndex);
+        label.classList.toggle("is-resolved", index < stageIndex);
+      });
+    }
   }
 
   let current = "home";
@@ -112,17 +265,23 @@ function updatePageChrome() {
   }
 
   if (current !== activeChromeSection) {
-    const navCurrent = current === "evidence" ? "journey" : current;
+    const navCurrent = current;
     activeDesktopLink = null;
     desktopLinks.forEach((link) => {
       const isActive = link.hash === `#${navCurrent}`;
       link.classList.toggle("active", isActive);
       if (isActive) {
-        link.setAttribute("aria-current", "page");
+        link.setAttribute("aria-current", "location");
         activeDesktopLink = link;
       } else {
         link.removeAttribute("aria-current");
       }
+    });
+    mobileNavLinks.forEach((link) => {
+      const isActive = link.hash === `#${navCurrent}`;
+      link.classList.toggle("active", isActive);
+      if (isActive) link.setAttribute("aria-current", "location");
+      else link.removeAttribute("aria-current");
     });
     const spineIndex = signalSpineSections.indexOf(current);
     signalSpineNodes.forEach((node, index) => {
@@ -144,10 +303,15 @@ function requestPageChromeUpdate() {
 window.addEventListener("scroll", requestPageChromeUpdate, { passive: true });
 window.addEventListener("resize", () => {
   syncVisualMode();
-  if (!prefersLiteVisuals()) {
-    initMotionSystem();
-    armLivingSystem();
+  if (!prefersLiteMotion()) {
+    disableLiteMotion();
+    scheduleMotionLibraries();
+  } else {
+    disableMotionSystem();
+    if (reducedMotion.matches) disableLiteMotion();
+    else initLiteMotion();
   }
+  if (!prefersLiteVisuals()) armLivingSystem();
   measurePageChrome();
   activeChromeSection = "";
   requestPageChromeUpdate();
@@ -167,7 +331,7 @@ document.fonts?.ready.then(() => {
 const menuButton = document.getElementById("menu-button");
 const mobileMenu = document.getElementById("mobile-menu");
 const pageMain = document.getElementById("main");
-const mobileMenuLinks = [...(mobileMenu?.querySelectorAll("a") || [])];
+const mobileMenuLinks = mobileNavLinks;
 
 function setMenu(open, restoreFocus = true) {
   if (!menuButton || !mobileMenu) return;
@@ -222,13 +386,21 @@ window.addEventListener("resize", () => {
 const reveals = [...document.querySelectorAll(".reveal")];
 reveals.forEach((element) => element.classList.add("is-visible"));
 let motionInitialized = false;
+let liteMotionInitialized = false;
+let liteMotionObserver = null;
+let motionEventController = null;
+let motionMediaContext = null;
+let motionContext = null;
 
 function initMotionSystem() {
-  if (motionInitialized || !gsapReady || prefersLiteVisuals()) return;
+  if (motionInitialized || !gsapReady || prefersLiteMotion()) return;
   motionInitialized = true;
+  motionEventController = new AbortController();
+  const motionEventSignal = motionEventController.signal;
 
   const gsap = window.gsap;
   const ScrollTrigger = window.ScrollTrigger;
+  motionContext = gsap.context(() => {
   const compactMotion = window.innerWidth <= 850;
   const signalType = document.querySelector("[data-signal-type]");
   const allTypeSlices = signalType
@@ -236,36 +408,6 @@ function initMotionSystem() {
     : [];
   const typeSlices = compactMotion ? allTypeSlices.slice(0, 3) : allTypeSlices;
   const typeOffsets = [22, -18, 15, -12, 9, -7];
-  const heroTimeline = gsap.timeline({ defaults: { ease: "power3.out" } });
-
-  heroTimeline
-    .from(".hero-display-title span", { yPercent: 85, autoAlpha: 0, duration: 1.15, stagger: 0.09 }, 0)
-    .from(".hero-meta > span", { y: 16, autoAlpha: 0, duration: 0.65, stagger: 0.07 }, 0.16)
-    .from(".hero-kicker", { y: 18, autoAlpha: 0, duration: 0.72 }, 0.27)
-    .from(".hero-title", { y: 28, autoAlpha: 0, duration: 1.05 }, 0.32)
-    .from(".hero-intro", { y: 24, autoAlpha: 0, duration: 0.75 }, 0.62)
-    .from(".hero-actions", { y: 20, autoAlpha: 0, duration: 0.7 }, 0.72)
-    .from(".system-label, .system-index", { x: 12, autoAlpha: 0, duration: 0.7, stagger: 0.08 }, 0.74)
-    .from(".hero-proof > div", { y: 18, autoAlpha: 0, duration: 0.65, stagger: 0.08 }, 0.8)
-    .from(".scroll-cue", { y: 12, autoAlpha: 0, duration: 0.55 }, 0.95);
-
-  if (typeSlices.length) {
-    heroTimeline.fromTo(typeSlices, {
-      x: (index) => typeOffsets[index] * (compactMotion ? 0.35 : 1),
-      y: (index) => (index % 2 ? 2 : -2),
-      skewX: (index) => (index % 2 ? -6 : 5),
-      autoAlpha: (index) => 0.52 - index * 0.035,
-    }, {
-      x: 0,
-      y: 0,
-      skewX: 0,
-      autoAlpha: 0,
-      duration: compactMotion ? 0.54 : 0.82,
-      stagger: compactMotion ? 0.025 : 0.035,
-      ease: "expo.out",
-      clearProps: "transform,opacity,visibility",
-    }, 0.4);
-  }
 
   if (!compactMotion && finePointer.matches && signalType && typeSlices.length) {
     let lastTypePulse = 0;
@@ -295,23 +437,21 @@ function initMotionSystem() {
     signalType.addEventListener("pointerenter", () => {
       lastTypePulse = performance.now();
       pulseSignalType(1);
-    });
+    }, { signal: motionEventSignal });
 
     signalType.addEventListener("pointermove", (event) => {
       const now = performance.now();
       if (now - lastTypePulse < 240) return;
       lastTypePulse = now;
       pulseSignalType(event.movementX < 0 ? -1 : 1);
-    }, { passive: true });
+    }, { passive: true, signal: motionEventSignal });
 
     reducedMotion.addEventListener("change", (event) => {
       if (!event.matches) return;
       gsap.killTweensOf(allTypeSlices);
       gsap.set(allTypeSlices, { clearProps: "transform,opacity,visibility" });
-    });
+    }, { signal: motionEventSignal });
   }
-
-  if (compactMotion) heroTimeline.timeScale(1.3);
 
   document.querySelectorAll(".section-heading, .about-heading, .contact-heading").forEach((heading) => {
     const title = heading.querySelector("h2");
@@ -343,8 +483,10 @@ function initMotionSystem() {
 
   document.querySelectorAll(".case-study").forEach((study) => {
     const visual = study.querySelector(".project-visual");
+    const resolver = study.querySelector(".project-resolver");
+    const identity = study.querySelectorAll(".project-mark, .project-identity-copy, .project-discipline");
     const details = study.querySelectorAll(".project-number, .project-heading > *, .project-story > *");
-    gsap.timeline({
+    const projectTimeline = gsap.timeline({
       scrollTrigger: {
         trigger: study,
         start: "top 76%",
@@ -359,7 +501,23 @@ function initMotionSystem() {
         autoAlpha: 1,
         duration: compactMotion ? 0.66 : 1.05,
         ease: "power4.inOut",
-      })
+      });
+
+    if (resolver) {
+      projectTimeline.fromTo(resolver, {
+        x: "-80px",
+        autoAlpha: 0,
+      }, {
+        x: "100vw",
+        autoAlpha: 0.74,
+        duration: 1.05,
+        ease: "power2.inOut",
+        clearProps: "transform,opacity,visibility",
+      }, 0.3);
+    }
+
+    projectTimeline
+      .from(identity, { y: 16, autoAlpha: 0, duration: 0.58, stagger: 0.06, ease: "power3.out" }, 0.44)
       .from(details, { y: 28, autoAlpha: 0, duration: compactMotion ? 0.44 : 0.72, stagger: compactMotion ? 0.035 : 0.055, ease: "power3.out" }, compactMotion ? 0.34 : 0.56);
   });
 
@@ -395,15 +553,42 @@ function initMotionSystem() {
         duration: 1,
         ease: "power4.inOut",
       })
+      .from(".lab-field > i", { scale: 0, autoAlpha: 0, duration: 0.48, stagger: 0.045, ease: "back.out(1.8)", clearProps: "transform,opacity,visibility" }, 0.28)
+      .from(".lab-wave", { autoAlpha: 0, duration: 0.7, stagger: 0.1, ease: "power2.out", clearProps: "opacity,visibility" }, 0.34)
       .from(".lab-tabs", { y: 18, autoAlpha: 0, duration: 0.55 }, 0.35)
       .from(".lab-panel.is-active > *", { y: 22, autoAlpha: 0, duration: 0.62, stagger: 0.07 }, 0.48);
   }
 
   const journeyRoute = document.querySelector(".journey-route");
+  const journeyTimeline = document.querySelector(".journey-timeline");
+  const journeySteps = [...document.querySelectorAll(".journey-step")];
   if (journeyRoute) {
     gsap.timeline({ scrollTrigger: { trigger: journeyRoute, start: "top 82%", once: true } })
       .from(".journey-route > *", { x: -14, autoAlpha: 0, duration: 0.55, stagger: 0.06, ease: "power3.out" })
       .from(".journey-step", { y: 34, autoAlpha: 0, duration: 0.72, stagger: 0.09, ease: "power3.out" }, 0.28);
+  }
+
+  if (journeyTimeline && journeySteps.length) {
+    let lastJourneyStep = -1;
+    const setJourneyStep = (index) => {
+      if (index === lastJourneyStep) return;
+      lastJourneyStep = index;
+      journeySteps.forEach((step, stepIndex) => {
+        step.classList.toggle("is-narrative-active", stepIndex === index);
+      });
+    };
+
+    gsap.fromTo(journeyTimeline, { "--journey-progress": 0 }, {
+      "--journey-progress": 1,
+      ease: "none",
+      scrollTrigger: {
+        trigger: journeyTimeline,
+        start: "top 72%",
+        end: "bottom 28%",
+        scrub: 0.7,
+        onUpdate: (self) => setJourneyStep(Math.min(journeySteps.length - 1, Math.floor(self.progress * journeySteps.length))),
+      },
+    });
   }
 
   const evidenceLedger = document.querySelector(".evidence-ledger");
@@ -427,8 +612,8 @@ function initMotionSystem() {
     scrollTrigger: { trigger: ".contact-form", start: "top 80%", once: true },
   });
 
-  const motionMedia = gsap.matchMedia();
-  motionMedia.add("(min-width: 851px)", () => {
+  motionMediaContext = gsap.matchMedia();
+  motionMediaContext.add("(min-width: 851px)", () => {
     const displayNames = document.querySelectorAll(".hero-display-title span");
     if (displayNames.length === 2) {
       gsap.to(displayNames[0], {
@@ -466,7 +651,10 @@ function initMotionSystem() {
   });
 
   initProjectSignal();
-  document.fonts?.ready.then(() => ScrollTrigger.refresh());
+  }, document);
+  document.fonts?.ready.then(() => {
+    if (motionInitialized && !prefersLiteMotion()) ScrollTrigger.refresh();
+  });
 }
 
 function initProjectSignal() {
@@ -489,6 +677,7 @@ function initProjectSignal() {
     signal.dataset.projectSignal = projectKeys[index];
     document.documentElement.dataset.projectSignal = projectKeys[index];
     nodes.forEach((node, nodeIndex) => node.classList.toggle("active", nodeIndex === index));
+    studies.forEach((study, studyIndex) => study.classList.toggle("is-signal-active", studyIndex === index));
     gsap.fromTo([number, name], { y: 6, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.35, stagger: 0.04, ease: "power2.out", overwrite: true });
   }
 
@@ -521,21 +710,79 @@ function initProjectSignal() {
   });
 }
 
-if (document.fonts?.ready) {
-  Promise.race([
-    document.fonts.ready,
-    new Promise((resolve) => window.setTimeout(resolve, 1600)),
-  ]).then(initMotionSystem);
-} else {
-  initMotionSystem();
+function disableMotionSystem() {
+  if (!motionInitialized || !gsapReady) return;
+  motionInitialized = false;
+  motionEventController?.abort();
+  motionEventController = null;
+  motionMediaContext?.revert();
+  motionMediaContext = null;
+  motionContext?.revert();
+  motionContext = null;
+  window.gsap.killTweensOf("#project-signal, #project-signal *, .signal-type__slice");
+  window.gsap.set(
+    ".section-heading *, .about-heading *, .contact-heading *, .project-visual, .project-visual *, .project-info *, .profile-frame, .profile-frame *, .about-copy > *, .ioai-panel, .capabilities, .project-archive, .direct-contact, .lab-console, .lab-console *, .lab-tabs, .lab-panel > *, .journey-route > *, .journey-step, .evidence-row, .contact-form .form-row, .contact-form .form-submit, .hero-display-title span, .hero-grid, .project-visual img, .profile-frame img, .journey-timeline, #project-signal, #project-signal *, .signal-type__slice",
+    { clearProps: "all" },
+  );
+  document.querySelectorAll(".case-study").forEach((study) => study.classList.remove("is-signal-active"));
+  document.querySelectorAll(".journey-step").forEach((step) => step.classList.remove("is-narrative-active"));
 }
+
+const liteMotionAnimations = new Set();
+
+function disableLiteMotion() {
+  liteMotionObserver?.disconnect();
+  liteMotionObserver = null;
+  liteMotionInitialized = false;
+  liteMotionAnimations.forEach((animation) => animation.cancel());
+  liteMotionAnimations.clear();
+}
+
+function initLiteMotion() {
+  if (liteMotionInitialized
+    || reducedMotion.matches
+    || !prefersLiteMotion()
+    || !("IntersectionObserver" in window)
+    || typeof Element.prototype.animate !== "function") return;
+  liteMotionInitialized = true;
+  const targets = document.querySelectorAll(
+    ".case-study, .lab-grid, .journey-step, .evidence-row, .profile-card, .foundry-principles, .direct-contact, .contact-form",
+  );
+  liteMotionObserver = new IntersectionObserver((entries) => {
+    if (reducedMotion.matches || !prefersLiteMotion()) {
+      disableLiteMotion();
+      return;
+    }
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      liteMotionObserver?.unobserve(entry.target);
+      const animation = entry.target.animate([
+        { opacity: 0.35, transform: "translate3d(0, 16px, 0)" },
+        { opacity: 1, transform: "translate3d(0, 0, 0)" },
+      ], {
+        duration: 360,
+        easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+      });
+      liteMotionAnimations.add(animation);
+      const release = () => liteMotionAnimations.delete(animation);
+      animation.finished.then(release, release);
+    });
+  }, { rootMargin: "0px 0px -8% 0px", threshold: 0.08 });
+  targets.forEach((target) => liteMotionObserver.observe(target));
+}
+
+if (prefersLiteMotion()) initLiteMotion();
+else scheduleMotionLibraries();
 
 /* Experiment switchboard ------------------------------------------------- */
 const labTabs = [...document.querySelectorAll(".lab-tab[role='tab']")];
 const labPanels = [...document.querySelectorAll(".lab-panel[role='tabpanel']")];
+const labConsole = document.querySelector(".lab-console");
 
 function activateLabTab(tab, moveFocus = false) {
   if (!tab) return;
+  const signalMode = tab.id.replace("lab-tab-", "");
+  if (labConsole) labConsole.dataset.labSignal = signalMode;
   labTabs.forEach((candidate) => {
     const selected = candidate === tab;
     candidate.classList.toggle("is-active", selected);
@@ -845,7 +1092,10 @@ function closeCaseStudy(updateHistory = true) {
 }
 
 document.querySelectorAll("[data-case-study]").forEach((button) => {
-  button.addEventListener("click", () => openCaseStudy(button.dataset.caseStudy, button));
+  button.addEventListener("click", (event) => {
+    if (button.matches("a")) event.preventDefault();
+    openCaseStudy(button.dataset.caseStudy, button);
+  });
 });
 
 caseClose?.addEventListener("click", () => closeCaseStudy());
@@ -919,23 +1169,25 @@ function createLivingSystem() {
   const canvas = document.getElementById("system-canvas");
   const stage = document.querySelector(".system-stage");
   const hero = document.querySelector(".hero");
+  const resolutionLabels = [...(stage?.querySelectorAll(".system-label") || [])];
   if (!canvas || !stage || typeof window.THREE === "undefined" || prefersLiteVisuals() || livingSystemStarted) return;
-  livingSystemStarted = true;
 
   const THREE = window.THREE;
+  const compactSystem = prefersLiteMotion();
   let renderer;
 
   try {
     renderer = new THREE.WebGLRenderer({
       canvas,
       alpha: true,
-      antialias: window.devicePixelRatio <= 1.5,
+      antialias: !compactSystem && window.devicePixelRatio <= 1.5,
       powerPreference: "low-power",
     });
   } catch (error) {
     console.warn("WebGL is unavailable; using the CSS system fallback.", error);
     return;
   }
+  livingSystemStarted = true;
 
   renderer.setClearColor(0x000000, 0);
   renderer.outputEncoding = THREE.sRGBEncoding;
@@ -948,7 +1200,7 @@ function createLivingSystem() {
   system.rotation.set(-0.14, -0.28, 0.03);
   scene.add(system);
 
-  const haloGeometry = new THREE.IcosahedronGeometry(1.9, 3);
+  const haloGeometry = new THREE.IcosahedronGeometry(1.9, compactSystem ? 2 : 3);
   const haloMaterial = new THREE.ShaderMaterial({
     uniforms: {
       uTime: { value: 0 },
@@ -1050,8 +1302,9 @@ function createLivingSystem() {
     blending: THREE.AdditiveBlending,
   });
 
-  for (let index = 0; index < 18; index += 1) {
-    const vertical = 1 - (index / 17) * 2;
+  const shardCount = compactSystem ? 12 : 18;
+  for (let index = 0; index < shardCount; index += 1) {
+    const vertical = 1 - (index / (shardCount - 1)) * 2;
     const radial = Math.sqrt(1 - vertical * vertical);
     const angle = index * Math.PI * (3 - Math.sqrt(5));
     const direction = new THREE.Vector3(
@@ -1079,7 +1332,7 @@ function createLivingSystem() {
   }
   system.add(shardGroup);
 
-  const nodeCount = 34;
+  const nodeCount = compactSystem ? 24 : 34;
   const nodePositions = [];
   const nodeBuffer = new Float32Array(nodeCount * 3);
   const goldenAngle = Math.PI * (3 - Math.sqrt(5));
@@ -1168,7 +1421,7 @@ function createLivingSystem() {
   const signalGeometries = [];
 
   signalCurves.forEach((curve, index) => {
-    const geometry = new THREE.TubeGeometry(curve, 72, index === 2 ? 0.009 : 0.014, 5, false);
+    const geometry = new THREE.TubeGeometry(curve, compactSystem ? 48 : 72, index === 2 ? 0.009 : 0.014, compactSystem ? 4 : 5, false);
     const material = new THREE.MeshBasicMaterial({
       color: index === 1 ? 0xd13d68 : 0x2f5bff,
       transparent: true,
@@ -1181,7 +1434,7 @@ function createLivingSystem() {
     signalGeometries.push(geometry);
 
     const marker = new THREE.Mesh(
-      new THREE.SphereGeometry(index === 1 ? 0.075 : 0.058, 10, 10),
+      new THREE.SphereGeometry(index === 1 ? 0.075 : 0.058, compactSystem ? 7 : 10, compactSystem ? 7 : 10),
       new THREE.MeshBasicMaterial({
         color: index === 1 ? 0xd13d68 : 0x7893ff,
         transparent: true,
@@ -1194,7 +1447,7 @@ function createLivingSystem() {
     system.add(marker);
   });
 
-  const dustCount = 120;
+  const dustCount = compactSystem ? 70 : 120;
   const dustBuffer = new Float32Array(dustCount * 3);
   for (let index = 0; index < dustCount; index += 1) {
     const normalized = index / dustCount;
@@ -1219,11 +1472,9 @@ function createLivingSystem() {
   const dust = new THREE.Points(dustGeometry, dustMaterial);
   system.add(dust);
 
-  const membraneSelections = [
-    [2, 10, 18],
-    [7, 16, 26],
-    [12, 23, 31],
-  ];
+  const membraneSelections = compactSystem
+    ? [[2, 8, 16], [5, 13, 21]]
+    : [[2, 10, 18], [7, 16, 26], [12, 23, 31]];
 
   membraneSelections.forEach((selection, index) => {
     const vertices = selection.flatMap((pointIndex) => nodePositions[pointIndex].toArray());
@@ -1263,14 +1514,26 @@ function createLivingSystem() {
   let resolveTarget = 0.14;
   let resolveValue = 0.14;
   let lastResolveCss = -1;
+  let lastResolutionStage = -1;
   let isVisible = true;
   let frameId = 0;
   let resolveScrollFrame = 0;
   let heroMetrics = null;
   let lastFrameTime = 0;
-  const frameInterval = 1000 / 30;
+  let systemDisposed = false;
+  const frameInterval = 1000 / (compactSystem ? 24 : 30);
   const clock = new THREE.Clock();
   let elapsed = 0;
+
+  function updateResolutionLabels(value) {
+    const stageIndex = value < 0.38 ? 0 : value < 0.7 ? 1 : 2;
+    if (stageIndex === lastResolutionStage) return;
+    lastResolutionStage = stageIndex;
+    resolutionLabels.forEach((label, index) => {
+      label.classList.toggle("is-active", index === stageIndex);
+      label.classList.toggle("is-resolved", index < stageIndex);
+    });
+  }
 
   function updateResolveTarget() {
     if (!heroMetrics) return;
@@ -1304,7 +1567,7 @@ function createLivingSystem() {
   function resize() {
     const width = Math.max(stage.clientWidth, 1);
     const height = Math.max(stage.clientHeight, 1);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, compactSystem ? 1 : 1.25));
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
@@ -1337,6 +1600,7 @@ function createLivingSystem() {
     pointerEnergy *= 0.94;
 
     resolveValue += (resolveTarget - resolveValue) * 0.045;
+    updateResolutionLabels(resolveValue);
     const resolvedEase = resolveValue * resolveValue * (3 - 2 * resolveValue);
 
     shardGroup.children.forEach((shard) => {
@@ -1452,12 +1716,15 @@ function createLivingSystem() {
   });
 
   resize();
+  updateResolutionLabels(resolveValue);
   renderFrame();
   document.documentElement.classList.add("webgl-ready");
   startAnimation();
 
-  window.addEventListener("pagehide", () => {
+  window.addEventListener("pagehide", (event) => {
     stopAnimation();
+    if (event.persisted || systemDisposed) return;
+    systemDisposed = true;
     window.removeEventListener("scroll", requestResolveUpdate);
     if (resolveScrollFrame) window.cancelAnimationFrame(resolveScrollFrame);
     resizeObserver?.disconnect();
@@ -1468,7 +1735,13 @@ function createLivingSystem() {
       materials.filter(Boolean).forEach((material) => material.dispose?.());
     });
     renderer.dispose();
-  }, { once: true });
+  });
+
+  window.addEventListener("pageshow", (event) => {
+    if (!event.persisted || systemDisposed) return;
+    resize();
+    startAnimation();
+  });
 }
 
 let threeLoadPromise = null;
@@ -1482,16 +1755,18 @@ function loadLivingSystem() {
   if (!threeLoadPromise) {
     threeLoadPromise = new Promise((resolve, reject) => {
       const loader = document.createElement("script");
-      loader.src = "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js";
-      loader.crossOrigin = "anonymous";
+      loader.src = "src/vendor/three.r128.min.js";
       loader.onload = resolve;
       loader.onerror = reject;
       document.head.append(loader);
     });
   }
-  threeLoadPromise.then(createLivingSystem).catch((error) => {
-    console.warn("The 3D signal field could not load; using the lightweight fallback.", error);
-  });
+  threeLoadPromise
+    .then(createLivingSystem)
+    .catch((error) => {
+      threeLoadPromise = null;
+      console.warn("The 3D signal field could not load; using the lightweight fallback.", error);
+    });
 }
 
 let livingSystemArmed = false;
@@ -1507,8 +1782,8 @@ function armLivingSystem() {
       whenIdle(() => {
         livingSystemArmed = false;
         loadLivingSystem();
-      }, 3000);
-    }, 1800);
+      }, 1600);
+    }, 700);
   };
 
   if (!("IntersectionObserver" in window)) {
@@ -1535,11 +1810,22 @@ if (document.readyState === "complete") {
 }
 
 reducedMotion.addEventListener?.("change", () => {
-  syncVisualMode();
-  if (!prefersLiteVisuals()) {
-    initMotionSystem();
-    armLivingSystem();
+  if (reducedMotion.matches) {
+    heroEntranceAnimations.forEach((animation) => animation.cancel());
+    heroEntranceAnimations.clear();
   }
+  syncVisualMode();
+  if (reducedMotion.matches) {
+    disableLiteMotion();
+    disableMotionSystem();
+  } else if (!prefersLiteMotion()) {
+    disableLiteMotion();
+    scheduleMotionLibraries();
+  } else {
+    disableMotionSystem();
+    initLiteMotion();
+  }
+  if (!prefersLiteVisuals()) armLivingSystem();
 });
 
 /* Contact ----------------------------------------------------------------- */
